@@ -1,18 +1,43 @@
 import AVFAudio
+
 import Foundation
 import MediaPlayer
 import Speech
+import SwiftyUserDefaults
 
 // note: currently operating w/ assumption that MPNowPlaying center controls (e.g., rewind) are not nicely integrated with AVAudioSession -- so will probs need to define responses twice; investigate if there is a nicer way to bridge this.
 
 // TODO: checkout spotify integration: https://github.com/spotify/ios-sdk
 
 // NEXT:
+    // - add error handling for creating documents dir
+    // - cleanup temp files; is there a better approach than what we're doing?
     // - apply rewind logic to MPNowPlayInfoCenter
     // - expand beyond 10 seconds rewind; evaluate UX (e.g., compare rewind vs. play vs other interactions)
+// DONE:
+  // - remember position of last listened (so i can resume)
+
+
 
 // RESEARCH:
     // - CMTime ... what is CM (core media?) ... and other stuff like that
+
+// TODO: cleanup; move to own file; consider DI
+struct EpisodeTimeStampTracker {
+    static func storeLatestTime(forEpisodeURL url: URL, time: Double) {
+        Defaults[\.lastLastenedTimeStamps][url.absoluteString] = time
+    }
+    
+    static func getLatestTime(forEpisodeURL url: URL) -> Double {
+        return Defaults[\.lastLastenedTimeStamps][url.absoluteString, default: 0]
+    }
+    
+}
+
+extension DefaultsKeys {
+    var lastLastenedTimeStamps: DefaultsKey<[String: Double]> { .init("lastLastenedTimeStamps", defaultValue: [:])}
+}
+
 class Player: NSObject, ObservableObject {
     
     @Published var player = AVPlayer()
@@ -31,6 +56,8 @@ class Player: NSObject, ObservableObject {
         let item = AVPlayerItem(asset: avAsset)
         
         self.player.replaceCurrentItem(with: item)
+        let mostRecentTimeStamp = EpisodeTimeStampTracker.getLatestTime(forEpisodeURL: streamURL)
+        player.seek(to: .init(seconds: mostRecentTimeStamp, preferredTimescale: CMTimeScale(NSEC_PER_SEC)), toleranceBefore: .zero, toleranceAfter: .zero)
         player.allowsExternalPlayback = true
 
         NotificationCenter.default.addObserver(self, selector: #selector(handleAVPlayerTimeJumpedNotification), name: AVPlayerItem.timeJumpedNotification, object: nil)
@@ -40,8 +67,9 @@ class Player: NSObject, ObservableObject {
         
         let interval = CMTime(seconds: 1.0, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
         player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            self?.lastObservedTimes.insert(time, at: 0)
-
+            guard let self else { return }
+            self.lastObservedTimes.insert(time, at: 0)
+            EpisodeTimeStampTracker.storeLatestTime(forEpisodeURL: self.streamURL, time: time.seconds)
         }
     }
     
@@ -67,7 +95,7 @@ class Player: NSObject, ObservableObject {
                 print("compatabile file types: ", fileTypes)
             }
             
-            exportSession.outputURL = createUrlInAppDD("tesing112234.m4a")
+            exportSession.outputURL = createUrlInAppDD("tesing1122354.m4a")
             exportSession.outputFileType = .m4a
             exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
             print("timerange: ", exportSession.timeRange)
@@ -85,7 +113,7 @@ class Player: NSObject, ObservableObject {
                             let request = SFSpeechURLRecognitionRequest(url: exportSession.outputURL!)
                             
                             request.shouldReportPartialResults = false
-
+                            request.addsPunctuation = true
                             if (recognizer?.isAvailable)! {
 
                                 recognizer?.recognitionTask(with: request) { result, error in

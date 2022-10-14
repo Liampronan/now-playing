@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		4F509FE828F9F6F40044FCF3 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F509FE728F9F6F40044FCF3 /* Player.swift */; };
 		4F509FEA28FA0C020044FCF3 /* LimitedArray.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F509FE928FA0C020044FCF3 /* LimitedArray.swift */; };
+		4F509FED28FA21020044FCF3 /* SwiftyUserDefaults in Frameworks */ = {isa = PBXBuildFile; productRef = 4F509FEC28FA21020044FCF3 /* SwiftyUserDefaults */; };
 		4F998E0D28EBBB6C00A612F9 /* now_playingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F998E0C28EBBB6C00A612F9 /* now_playingApp.swift */; };
 		4F998E0F28EBBB6D00A612F9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F998E0E28EBBB6D00A612F9 /* ContentView.swift */; };
 		4F998E1128EBBB6E00A612F9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4F998E1028EBBB6E00A612F9 /* Assets.xcassets */; };
@@ -57,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F509FED28FA21020044FCF3 /* SwiftyUserDefaults in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -153,6 +155,9 @@
 			dependencies = (
 			);
 			name = "now-playing";
+			packageProductDependencies = (
+				4F509FEC28FA21020044FCF3 /* SwiftyUserDefaults */,
+			);
 			productName = "now-playing";
 			productReference = 4F998E0928EBBB6C00A612F9 /* now-playing.app */;
 			productType = "com.apple.product-type.application";
@@ -225,6 +230,9 @@
 				Base,
 			);
 			mainGroup = 4F998E0028EBBB6C00A612F9;
+			packageReferences = (
+				4F509FEB28FA21020044FCF3 /* XCRemoteSwiftPackageReference "SwiftyUserDefaults" */,
+			);
 			productRefGroup = 4F998E0A28EBBB6C00A612F9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -624,6 +632,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4F509FEB28FA21020044FCF3 /* XCRemoteSwiftPackageReference "SwiftyUserDefaults" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sunshinejr/SwiftyUserDefaults";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4F509FEC28FA21020044FCF3 /* SwiftyUserDefaults */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F509FEB28FA21020044FCF3 /* XCRemoteSwiftPackageReference "SwiftyUserDefaults" */;
+			productName = SwiftyUserDefaults;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4F998E0128EBBB6C00A612F9 /* Project object */;
 }
