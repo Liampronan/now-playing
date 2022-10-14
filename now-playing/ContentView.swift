@@ -1,19 +1,15 @@
-//
-//  ContentView.swift
-//  now-playing
-//
-//  Created by Liam Ronan on 10/3/22.
-//
-
+import AVKit
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject var player = Player()
+    
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundColor(.accentColor)
-            Text("Hello, world!")
+            
+            VideoPlayer(player: player.player)
+                .frame(height: 400)
+            
         }
         .padding()
     }
