@@ -9,15 +9,15 @@ import SwiftyUserDefaults
 // TODO: checkout spotify integration: https://github.com/spotify/ios-sdk
 
 // IN-PROGRESS:
-    
 
 // NEXT:
-    // - cleanup temp files; is there a better approach than what we're doing?
+    
     // - // TODO [1015]: consider move this to error UI alert or something
     // - apply rewind logic to MPNowPlayInfoCenter
     // - expand beyond 10 seconds rewind; evaluate UX (e.g., compare rewind vs. play vs other interactions)
 
 // DONE:
+   // - cleanup temp files; is there a better approach than what we're doing?
   // - remember position of last listened (so i can resume)
   // - add error handling for creating documents dir
 
@@ -97,7 +97,10 @@ class Player: NSObject, ObservableObject {
                 print("compatabile file types: ", fileTypes)
             }
             do {
-                exportSession.outputURL = try createUrlInAppDD("tesing1122354.m4a")
+                let tempFileUrl = try createUrlInAppDD()
+                exportSession.outputURL = tempFileUrl
+                exportSession.outputFileType = .m4a
+                exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
                 exportSession.exportAsynchronously(completionHandler: {
                             switch exportSession.status {
                             case .failed:
@@ -118,6 +121,12 @@ class Player: NSObject, ObservableObject {
                                         guard let result = result else { print("No result!"); return }
 
                                         print(result.bestTranscription.formattedString)
+                                        do {
+                                            try FileManager.default.removeItem(at: tempFileUrl)
+                                        } catch (let e) {
+                                            print("error deleting file", e)
+                                        }
+                                        
                                     }
                                 } else {
                                     print("Device doesn't support speech recognition")
@@ -133,10 +142,7 @@ class Player: NSObject, ObservableObject {
                 print("error creating dir")
             }
             
-            exportSession.outputFileType = .m4a
-            exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
-            print("timerange: ", exportSession.timeRange)
-            print("timerange seconds: ", lastObservedTimes[0].seconds, lastObservedTimes[1].seconds)
+            
                 
             
             
@@ -146,12 +152,14 @@ class Player: NSObject, ObservableObject {
     }
     
     
-    private func createUrlInAppDD(_ filename: String) throws -> URL  {
+    private func createUrlInAppDD(_ filename: String = "tempfile-\(UUID().uuidString).m4a") throws -> URL  {
         
         let dirPathNoScheme = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as String
 
         //add directory path file Scheme;  some operations fail w/out it
-        let dirPath = "file://\(dirPathNoScheme)"
+//        let dirPath = "file://\(dirPathNoScheme)"
+        let dirPath = URL(fileURLWithPath: NSTemporaryDirectory(),
+                          isDirectory: true).absoluteString
         //name your file, make sure you get the ext right .mp3/.wav/.m4a/.mov/.whatever
         let pathArray = [dirPath, filename]
         let path = URL(string: pathArray.joined(separator: "/"))
