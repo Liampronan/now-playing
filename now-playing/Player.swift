@@ -1,5 +1,4 @@
 import AVFAudio
-
 import Foundation
 import MediaPlayer
 import Speech
@@ -9,15 +8,18 @@ import SwiftyUserDefaults
 
 // TODO: checkout spotify integration: https://github.com/spotify/ios-sdk
 
+// IN-PROGRESS:
+    
+
 // NEXT:
-    // - add error handling for creating documents dir
     // - cleanup temp files; is there a better approach than what we're doing?
+    // - // TODO [1015]: consider move this to error UI alert or something
     // - apply rewind logic to MPNowPlayInfoCenter
     // - expand beyond 10 seconds rewind; evaluate UX (e.g., compare rewind vs. play vs other interactions)
+
 // DONE:
   // - remember position of last listened (so i can resume)
-
-
+  // - add error handling for creating documents dir
 
 // RESEARCH:
     // - CMTime ... what is CM (core media?) ... and other stuff like that
@@ -94,43 +96,49 @@ class Player: NSObject, ObservableObject {
             exportSession.determineCompatibleFileTypes { fileTypes in
                 print("compatabile file types: ", fileTypes)
             }
+            do {
+                exportSession.outputURL = try createUrlInAppDD("tesing1122354.m4a")
+                exportSession.exportAsynchronously(completionHandler: {
+                            switch exportSession.status {
+                            case .failed:
+                                print("Export failed: \(exportSession.error!.localizedDescription)")
+                            case .cancelled:
+                                print("Export canceled")
+                            default:
+                                print("Successfully trimmed audio", exportSession.outputURL)
+                                let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+                                let request = SFSpeechURLRecognitionRequest(url: exportSession.outputURL!)
+                                
+                                request.shouldReportPartialResults = false
+                                request.addsPunctuation = true
+                                if (recognizer?.isAvailable)! {
+
+                                    recognizer?.recognitionTask(with: request) { result, error in
+                                        guard error == nil else { print("Error: \(error!)"); return }
+                                        guard let result = result else { print("No result!"); return }
+
+                                        print(result.bestTranscription.formattedString)
+                                    }
+                                } else {
+                                    print("Device doesn't support speech recognition")
+                                }
+                                
+    //                            DispatchQueue.main.async(execute: {
+    //                                finished(furl)
+    //                            })
+                            }
+                        })
+            } catch {
+                // TODO [1015]: consider move this to error UI alert or something
+                print("error creating dir")
+            }
             
-            exportSession.outputURL = createUrlInAppDD("tesing1122354.m4a")
             exportSession.outputFileType = .m4a
             exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
             print("timerange: ", exportSession.timeRange)
             print("timerange seconds: ", lastObservedTimes[0].seconds, lastObservedTimes[1].seconds)
                 
-            exportSession.exportAsynchronously(completionHandler: {
-                        switch exportSession.status {
-                        case .failed:
-                            print("Export failed: \(exportSession.error!.localizedDescription)")
-                        case .cancelled:
-                            print("Export canceled")
-                        default:
-                            print("Successfully trimmed audio", exportSession.outputURL)
-                            let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-                            let request = SFSpeechURLRecognitionRequest(url: exportSession.outputURL!)
-                            
-                            request.shouldReportPartialResults = false
-                            request.addsPunctuation = true
-                            if (recognizer?.isAvailable)! {
-
-                                recognizer?.recognitionTask(with: request) { result, error in
-                                    guard error == nil else { print("Error: \(error!)"); return }
-                                    guard let result = result else { print("No result!"); return }
-
-                                    print(result.bestTranscription.formattedString)
-                                }
-                            } else {
-                                print("Device doesn't support speech recognition")
-                            }
-                            
-//                            DispatchQueue.main.async(execute: {
-//                                finished(furl)
-//                            })
-                        }
-                    })
+            
             
             
             
@@ -138,7 +146,7 @@ class Player: NSObject, ObservableObject {
     }
     
     
-    private func createUrlInAppDD(_ filename: String) -> URL {
+    private func createUrlInAppDD(_ filename: String) throws -> URL  {
         
         let dirPathNoScheme = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as String
 
@@ -153,7 +161,7 @@ class Player: NSObject, ObservableObject {
             // TODO: better error handling .... 
             print("filepath creation failed ~~~")
             //if it fails do this stuff:
-            return URL(string: "choose how to handle error here")!
+            throw PlayerError.createDirError("Error creating filepath; maybe it already exists")
         }
         print("filepath created ~~~", filePath)
         //if it works return the filePath
@@ -201,3 +209,7 @@ class Player: NSObject, ObservableObject {
 // conforming to this delegate here allows for remote urls to get trimmed via AVAssetExportSession
 // (see: https://stackoverflow.com/a/47954704)
 extension Player: AVAssetResourceLoaderDelegate {}
+
+enum PlayerError: Error {
+    case createDirError(String)
+}
