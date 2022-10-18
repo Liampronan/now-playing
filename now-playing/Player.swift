@@ -10,10 +10,14 @@ import SwiftyUserDefaults
 
 // IN-PROGRESS:
 
+    // - check if volume change notif works
+
 // NEXT:
     
-    // - // TODO [1015]: consider move this to error UI alert or something
+    
+    
     // - apply rewind logic to MPNowPlayInfoCenter
+    // - // TODO [1015]: consider move this to error UI alert or something
     // - expand beyond 10 seconds rewind; evaluate UX (e.g., compare rewind vs. play vs other interactions)
 
 // DONE:
@@ -114,8 +118,8 @@ class Player: NSObject, ObservableObject {
                                 
                                 request.shouldReportPartialResults = false
                                 request.addsPunctuation = true
+                                
                                 if (recognizer?.isAvailable)! {
-
                                     recognizer?.recognitionTask(with: request) { result, error in
                                         guard error == nil else { print("Error: \(error!)"); return }
                                         guard let result = result else { print("No result!"); return }
