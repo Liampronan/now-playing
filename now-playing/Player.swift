@@ -91,17 +91,15 @@ class Player: NSObject, ObservableObject {
                 return
             }
             
-//            let avComposition = AVMutableComposition(url: <#T##URL#>)
             guard let exportSession = AVAssetExportSession(asset: currentItemAsset, presetName: AVAssetExportPresetAppleM4A) else {
                 print("error creating export session...")
                 return
             }
             
-            exportSession.determineCompatibleFileTypes { fileTypes in
-                print("compatabile file types: ", fileTypes)
-            }
             do {
                 let tempFileUrl = try createUrlInAppDD()
+                // TODO: move to service
+                // TODO: cleanup below code; services where appropriate 
                 exportSession.outputURL = tempFileUrl
                 exportSession.outputFileType = .m4a
                 exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
