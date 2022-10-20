@@ -99,7 +99,7 @@ class Player: NSObject, ObservableObject {
             do {
                 let tempFileUrl = try createUrlInAppDD()
                 // TODO: move to service
-                // TODO: cleanup below code; services where appropriate 
+                // TODO: cleanup below code; services where appropriate
                 exportSession.outputURL = tempFileUrl
                 exportSession.outputFileType = .m4a
                 exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
@@ -109,7 +109,7 @@ class Player: NSObject, ObservableObject {
                                 print("Export failed: \(exportSession.error!.localizedDescription)")
                             case .cancelled:
                                 print("Export canceled")
-                            default:
+                            case .completed:
                                 print("Successfully trimmed audio", exportSession.outputURL)
                                 let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
                                 let request = SFSpeechURLRecognitionRequest(url: exportSession.outputURL!)
@@ -133,6 +133,9 @@ class Player: NSObject, ObservableObject {
                                 } else {
                                     print("Device doesn't support speech recognition")
                                 }
+                            case .exporting, .failed, .unknown, .waiting:
+                                print("unhandled status: ", exportSession.status)
+                                
                                 
     //                            DispatchQueue.main.async(execute: {
     //                                finished(furl)
