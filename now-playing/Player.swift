@@ -18,6 +18,7 @@ import SwiftyUserDefaults
     
     // - apply rewind logic to MPNowPlayInfoCenter
     // - // TODO [1015]: consider move this to error UI alert or something
+    // - research:  commandCenter.bookmarkCommand.isEnabled
     // - expand beyond 10 seconds rewind; evaluate UX (e.g., compare rewind vs. play vs other interactions)
 
 // DONE:
