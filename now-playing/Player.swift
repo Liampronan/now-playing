@@ -14,14 +14,15 @@ import SwiftyUserDefaults
 
 // NEXT:
     
-    
-    
     // - apply rewind logic to MPNowPlayInfoCenter
-    // - // TODO [1015]: consider move this to error UI alert or something
+    // - TODO [1015]: consider move this to error UI alert or something
+    // - UI for clips
+    // - debug UI - for logs, errors (dropdown alert from top; could be fun little library)
     // - expand beyond 10 seconds rewind; evaluate UX (e.g., compare rewind vs. play vs other interactions)
 
 // DONE:
-   // - cleanup temp files; is there a better approach than what we're doing?
+  // - refactor transcription code to service; modernize async w/ async/await
+  // - cleanup temp files; is there a better approach than what we're doing?
   // - remember position of last listened (so i can resume)
   // - add error handling for creating documents dir
 
@@ -43,6 +44,7 @@ struct EpisodeTimeStampTracker {
 extension DefaultsKeys {
     var lastLastenedTimeStamps: DefaultsKey<[String: Double]> { .init("lastLastenedTimeStamps", defaultValue: [:])}
 }
+
 
 class Player: NSObject, ObservableObject {
     
@@ -82,103 +84,26 @@ class Player: NSObject, ObservableObject {
     @objc private func handleAVPlayerTimeJumpedNotification(notif: Notification) {
         guard lastObservedTimes.count > 1 else { return }
         let secondToLastObservedTime = lastObservedTimes[1]
+        let isPlayerRewinding = secondToLastObservedTime.seconds - player.currentTime().seconds >= 10
         
-        if secondToLastObservedTime.seconds - player.currentTime().seconds >= 10 {
+        guard isPlayerRewinding else { return }
             print("rewind ~~")
             
-            guard let currentItemAsset = player.currentItem?.asset else {
-                print("error unwrapping current item...")
-                return
-            }
-            
-            guard let exportSession = AVAssetExportSession(asset: currentItemAsset, presetName: AVAssetExportPresetAppleM4A) else {
-                print("error creating export session...")
-                return
-            }
-            
+        guard let currentItemAsset = player.currentItem?.asset else {
+            print("error unwrapping current item...")
+            return
+        }
+        
+        Task.init {
             do {
-                let tempFileUrl = try createUrlInAppDD()
-                // TODO: move to service
-                // TODO: cleanup below code; services where appropriate
-                exportSession.outputURL = tempFileUrl
-                exportSession.outputFileType = .m4a
-                exportSession.timeRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
-                exportSession.exportAsynchronously(completionHandler: {
-                            switch exportSession.status {
-                            case .failed:
-                                print("Export failed: \(exportSession.error!.localizedDescription)")
-                            case .cancelled:
-                                print("Export canceled")
-                            case .completed:
-                                print("Successfully trimmed audio", exportSession.outputURL)
-                                let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
-                                let request = SFSpeechURLRecognitionRequest(url: exportSession.outputURL!)
-                                
-                                request.shouldReportPartialResults = false
-                                request.addsPunctuation = true
-                                
-                                if (recognizer?.isAvailable)! {
-                                    recognizer?.recognitionTask(with: request) { result, error in
-                                        guard error == nil else { print("Error: \(error!)"); return }
-                                        guard let result = result else { print("No result!"); return }
-
-                                        print(result.bestTranscription.formattedString)
-                                        do {
-                                            try FileManager.default.removeItem(at: tempFileUrl)
-                                        } catch (let e) {
-                                            print("error deleting file", e)
-                                        }
-                                        
-                                    }
-                                } else {
-                                    print("Device doesn't support speech recognition")
-                                }
-                            case .exporting, .failed, .unknown, .waiting:
-                                print("unhandled status: ", exportSession.status)
-                                
-                                
-    //                            DispatchQueue.main.async(execute: {
-    //                                finished(furl)
-    //                            })
-                            }
-                        })
+                let clipRange = CMTimeRange(start: lastObservedTimes[0], end: secondToLastObservedTime)
+                let transcribed = try await TranscribeService.transcribe(with: currentItemAsset, at: clipRange)
+                print("transcribed:", transcribed)
             } catch {
                 // TODO [1015]: consider move this to error UI alert or something
                 print("error creating dir")
             }
-            
-            
-                
-            
-            
-            
-            
         }
-    }
-    
-    
-    private func createUrlInAppDD(_ filename: String = "tempfile-\(UUID().uuidString).m4a") throws -> URL  {
-        
-        let dirPathNoScheme = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as String
-
-        //add directory path file Scheme;  some operations fail w/out it
-//        let dirPath = "file://\(dirPathNoScheme)"
-        let dirPath = URL(fileURLWithPath: NSTemporaryDirectory(),
-                          isDirectory: true).absoluteString
-        //name your file, make sure you get the ext right .mp3/.wav/.m4a/.mov/.whatever
-        let pathArray = [dirPath, filename]
-        let path = URL(string: pathArray.joined(separator: "/"))
-
-        //use a guard since the result is an optional
-        guard let filePath = path else {
-            // TODO: better error handling .... 
-            print("filepath creation failed ~~~")
-            //if it fails do this stuff:
-            throw PlayerError.createDirError("Error creating filepath; maybe it already exists")
-        }
-        print("filepath created ~~~", filePath)
-        //if it works return the filePath
-        return filePath
     }
     
     private func setInfo() {
@@ -222,7 +147,3 @@ class Player: NSObject, ObservableObject {
 // conforming to this delegate here allows for remote urls to get trimmed via AVAssetExportSession
 // (see: https://stackoverflow.com/a/47954704)
 extension Player: AVAssetResourceLoaderDelegate {}
-
-enum PlayerError: Error {
-    case createDirError(String)
-}
